@@ -26,6 +26,7 @@
     view: "auth",        // current view name
     authMode: "login",   // "login" | "register"
     pollTimer: null,     // active setInterval id while a draft is generating
+    regenerating: {},    // map: roleId -> { artifact -> true } for in-flight single-artifact regens
     landingTimer: null,  // diff-demo cycle interval on the public landing page
     landingObserver: null, // scroll-reveal IntersectionObserver (landing)
     landingScroll: null  // landing nav scroll-shadow listener
@@ -1302,7 +1303,7 @@
     renderStage();
 
     var draft = state.drafts[state.activeRoleId];
-    if (draft && (draft.status === "pending" || draft.status === "processing")) {
+    if ((draft && (draft.status === "pending" || draft.status === "processing")) || isRegenerating(state.activeRoleId)) {
       startPolling(state.activeRoleId);
     }
   }
@@ -1331,10 +1332,15 @@
         "</div>" +
       "</div>";
 
+    var regenActive = isRegenerating(state.activeRoleId);
     var body;
     if (!draft) {
       body = '<div class="notice" style="border-color:var(--line);background:var(--paper-2)">No kit has been generated for this role yet.</div>';
-    } else if (draft.status === "completed") {
+    } else if (draft.status === "completed" || regenActive) {
+      // While a single artifact regenerates, keep the whole kit on screen and let
+      // buildTabsAndPanes spin only that one pane. This also outranks the server's
+      // transient "processing" status during polling, so the global four-stage
+      // loader never reappears for a per-artifact refresh.
       body = buildTabsAndPanes(draft, role);
     } else if (draft.status === "failed") {
       body = failureHtml(draft);
@@ -1348,8 +1354,9 @@
     var calBtn = stageEl.querySelector("#cal-followup");
     if (calBtn) calBtn.addEventListener("click", function () { onCalendarFollowup(state.activeRoleId, calBtn); });
 
-    // Tabs + per-artifact actions only exist once a kit is complete.
-    if (draft && draft.status === "completed") {
+    // Tabs + per-artifact actions exist once a kit is complete, and stay wired
+    // while a single artifact regenerates so the other tabs remain clickable.
+    if (draft && (draft.status === "completed" || regenActive)) {
       wireTabs(stageEl);
       wireCopyLetter(stageEl, draft);
       wireArtifactActions(stageEl, state.activeRoleId, draft);
@@ -1390,11 +1397,14 @@
         }).join("") +
       "</div>";
 
+    // Show a spinner on only the pane(s) being regenerated; every other pane
+    // keeps its real content and stays interactive.
+    var regen = regenSetFor(state.activeRoleId);
     var contentByTab = {
       fit: paneFit(draft.fit_analysis),
-      resume: paneResume(draft.resume_rewrite),
-      cover: paneCover(draft.cover_letter),
-      interview: paneInterview(draft.interview_qa),
+      resume: regen.resume ? paneRegenLoading("resume") : paneResume(draft.resume_rewrite),
+      cover: regen.cover ? paneRegenLoading("cover") : paneCover(draft.cover_letter),
+      interview: regen.interview ? paneRegenLoading("interview") : paneInterview(draft.interview_qa),
       salary: paneSalary(role)
     };
 
@@ -1472,6 +1482,54 @@
     });
   }
 
+  /** The set of artifacts currently regenerating for a role: { artifact: true }. */
+  function regenSetFor(roleId) {
+    return state.regenerating[String(roleId)] || {};
+  }
+  /** True while at least one single-artifact regeneration is in flight for a role. */
+  function isRegenerating(roleId) {
+    var set = state.regenerating[String(roleId)];
+    return !!set && Object.keys(set).length > 0;
+  }
+  // Friendly artifact names for the generation pill ("Generating <name>").
+  var GEN_LABELS = { resume: "Résumé", cover: "Cover Letter", interview: "Interview Q&A" };
+
+  // The status-pill icon: a sheet with lines and a hand holding a pen resting on
+  // it. The hand+pen group (.gp-hand) is animated in CSS to write left and right.
+  // The fist is rotated to the pen's angle with a static SVG transform so only
+  // the writing slide is animated.
+  var GEN_PILL_SVG =
+    '<svg class="gen-ico" viewBox="0 0 36 28" fill="none" aria-hidden="true">' +
+      '<rect class="gp-paper" x="2" y="4" width="15" height="20" rx="2"/>' +
+      '<path class="gp-line" d="M5 9 H14"/>' +
+      '<path class="gp-line" d="M5 13 H14.5"/>' +
+      '<path class="gp-line" d="M5 17 H12"/>' +
+      '<g class="gp-hand">' +
+        '<line class="gp-pen" x1="10" y1="18" x2="28" y2="4.5"/>' +
+        '<g class="gp-fist" transform="rotate(-38 17.5 12.2)">' +
+          '<rect x="11.5" y="8" width="12" height="8.4" rx="4"/>' +
+          '<line class="gp-knuckle" x1="14.5" y1="8.8" x2="14.5" y2="11.6"/>' +
+          '<line class="gp-knuckle" x1="17.6" y1="8.6" x2="17.6" y2="11.8"/>' +
+          '<line class="gp-knuckle" x1="20.7" y1="8.8" x2="20.7" y2="11.6"/>' +
+          '<ellipse class="gp-thumb" cx="13" cy="15.4" rx="2.6" ry="2"/>' +
+        "</g>" +
+      "</g>" +
+    "</svg>";
+
+  /** The artifact-generation loading state: a green status pill with an animated
+   *  writing-hand icon. Shown only in the pane being (re)generated. */
+  function paneRegenLoading(artifact) {
+    var name = GEN_LABELS[artifact] || ARTIFACT_LABELS[artifact] || artifact;
+    return (
+      '<div class="gen-loading">' +
+        '<div class="gen-pill" role="status" aria-live="polite">' +
+          GEN_PILL_SVG +
+          "<span>Generating " + esc(name) + "</span>" +
+        "</div>" +
+      "</div>"
+    );
+  }
+
   /** Re-run a single agent, then poll the draft until that artifact refreshes. */
   async function onRegenerate(roleId, artifact) {
     var id = String(roleId);
@@ -1481,11 +1539,13 @@
       return handleApiError(error);
     }
     toast("Regenerating the " + (ARTIFACT_LABELS[artifact] || artifact) + "…", "");
-    // Optimistically show the working state, then poll for the refreshed draft.
-    var draft = state.drafts[id];
-    if (draft) draft.status = "processing";
+    // Mark only this artifact as regenerating. We deliberately do not flip the
+    // whole draft to "processing"; that global status is what made renderStage
+    // swap the entire kit for the four-stage loader. Tracking the one artifact
+    // keeps every other pane static while just this pane shows a spinner.
+    if (!state.regenerating[id]) state.regenerating[id] = {};
+    state.regenerating[id][artifact] = true;
     if (state.activeRoleId === id) renderStage();
-    renderRoster();
     startPolling(id);
   }
 
@@ -2071,9 +2131,10 @@
       var finished = draft.status !== "pending" && draft.status !== "processing";
       if (finished) {
         stopPolling();
+        delete state.regenerating[id];           // clear any single-artifact regen flags
         renderRoster();                          // refresh the pill in the pipeline
         if (state.activeRoleId === id) {
-          renderStage();                         // swap loading -> kit (or failure)
+          renderStage();                         // swap loading/spinner -> fresh kit
         }
       } else if (statusChanged) {
         renderRoster();                          // e.g. pending -> processing
