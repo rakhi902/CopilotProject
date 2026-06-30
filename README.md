@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Job Application Co-Pilot
 
 **Your editor for the job hunt.** Hand over your résumé and a job description, and
@@ -366,3 +367,6 @@ marked `sync: false`, so they never live in the repo.
 - **Rupees throughout.** All money in the app — the salary coach, its prompts, and the UI — is in Indian Rupees (₹).
 - **No build step on the frontend.** It's plain HTML, CSS, and JavaScript served as static files, so there's nothing to compile and the API client is a single `window.API` object.
 ```
+=======
+# CopilotProject
+>>>>>>> 74c1f4ac0328df4136e178999f16bd66670a056e
