@@ -1,0 +1,10 @@
+# Development and testing dependencies.
+#
+# Installs everything in requirements.txt plus the test tooling, so a single
+#   pip install -r requirements-dev.txt
+# gives you a ready-to-test environment.
+
+-r requirements.txt
+
+pytest==8.3.4          # Test runner
+pytest-cov==6.0.0      # Coverage reporting (used by `make coverage`)

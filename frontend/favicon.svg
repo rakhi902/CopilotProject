@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Co-Pilot resume">
+  <rect width="24" height="24" rx="5" fill="#221d17"/>
+  <path d="M7.4 4H13.4L16.6 7.2V20H7.4Z" fill="#f5efe3"/>
+  <path d="M13.4 4V7.2H16.6Z" fill="#c7baa1"/>
+  <rect x="9" y="10.6" width="5.6" height="1.2" rx="0.6" fill="#c2562f"/>
+  <rect x="9" y="13.4" width="5.6" height="1.2" rx="0.6" fill="#9c9080"/>
+  <rect x="9" y="16.2" width="3.6" height="1.2" rx="0.6" fill="#9c9080"/>
+</svg>

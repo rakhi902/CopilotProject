@@ -1,0 +1,15 @@
+Alembic migration environment (single-database configuration).
+
+The database URL is supplied dynamically by env.py from the application's
+Settings (app.core.config), not from alembic.ini.
+
+Common commands (run from the backend/ directory with the venv active):
+
+    # Autogenerate a new migration after changing the ORM models:
+    alembic revision --autogenerate -m "describe the change"
+
+    # Apply all pending migrations:
+    alembic upgrade head
+
+    # Revert the most recent migration:
+    alembic downgrade -1

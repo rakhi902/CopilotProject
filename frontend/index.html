@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!--
+  Job Application Co-Pilot - single-page-app shell.
+
+  The whole UI is rendered by js/app.js into the #view container; this file is a
+  thin, semantic shell that loads the fonts, the stylesheet, and the two scripts.
+  There's no build step, just static files served over http (VS Code "Live
+  Server", say).
+
+  Once you're signed in, the app is a split-screen command center: a roster on the
+  left lists your whole pipeline of applications, and the stage on the right shows
+  the selected role's kit behind a tab bar (fit analysis, résumé diff, cover
+  letter, interview Q&A, and a salary coach).
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Application Co-Pilot - your editor for the job hunt</title>
+    <meta
+      name="description"
+      content="Turn your resume and a job description into a tailored application kit: fit analysis, rewritten bullets, a cover letter, and interview prep."
+    />
+
+    <!-- Typography: Fraunces (display serif), Archivo (UI), IBM Plex Mono (labels) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="theme-color" content="#efe7d8" />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <!-- Decorative film grain for paper atmosphere (purely cosmetic). -->
+    <div class="grain" aria-hidden="true"></div>
+
+    <!-- Top bar. Shown/populated by app.js only once a user is signed in. -->
+    <header class="masthead" id="masthead" hidden></header>
+
+    <!-- Every view (auth, command-center workspace, new application) renders here. -->
+    <main id="view" class="view"></main>
+
+    <!-- Transient notifications. -->
+    <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+    <noscript>This application requires JavaScript to be enabled.</noscript>
+
+    <!-- api.js defines window.API; app.js defines the views and wires events. -->
+    <script src="./js/api.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
+</html>

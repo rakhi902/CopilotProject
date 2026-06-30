@@ -1,0 +1,1106 @@
+/* ==========================================================================
+   Job Application Co-Pilot - "The Editor's Desk"
+   --------------------------------------------------------------------------
+   Aesthetic: a warm paper-and-ink editorial/print atelier. The product is your
+   master editor, so the Diff View borrows a proofreader's red (deletions) and
+   green (insertions). Display type is Fraunces; UI is Archivo; labels are mono.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Design tokens
+   -------------------------------------------------------------------------- */
+:root {
+  /* Paper & ink */
+  --paper: #efe7d8;          /* page background (warm bone) */
+  --paper-2: #f5efe3;        /* slightly lifted surfaces */
+  --card: #fbf8f1;           /* cards / sheets (warm near-white) */
+  --ink: #221d17;            /* primary text (warm near-black) */
+  --ink-soft: #5c5346;       /* secondary text */
+  --ink-faint: #8a7f6d;      /* captions / metadata */
+  --line: #ddd2bf;           /* hairlines */
+  --line-strong: #c7baa1;    /* stronger borders */
+
+  /* Spot colors */
+  --brand: #c2562f;          /* terracotta - primary actions & accents */
+  --brand-deep: #9f4322;     /* hover */
+  --brand-tint: #f1dccd;     /* soft fill */
+  --green: #2f6f4e;          /* met / inserted / improved */
+  --green-tint: #dce9dd;
+  --red: #b23a2e;            /* missing / deleted */
+  --red-tint: #f0d9d2;
+  --gold: #b1862f;           /* "in progress" / scores */
+  --gold-tint: #efe1c4;
+
+  /* Type */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+
+  /* Shape & depth (warm, soft shadows) */
+  --radius-sm: 5px;
+  --radius: 9px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(60, 44, 24, 0.08);
+  --shadow: 0 10px 30px -12px rgba(60, 44, 24, 0.28);
+  --shadow-lg: 0 30px 60px -20px rgba(50, 36, 20, 0.4);
+
+  --maxw: 1080px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Reset & base
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background-color: var(--paper);
+  /* Layered atmosphere: two soft radial washes over the paper. */
+  background-image:
+    radial-gradient(1200px 700px at 88% -10%, rgba(194, 86, 47, 0.10), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(47, 111, 78, 0.08), transparent 60%);
+  background-attachment: fixed;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img, svg { display: block; max-width: 100%; }
+button, input, textarea { font: inherit; color: inherit; }
+a { color: var(--brand-deep); text-underline-offset: 3px; }
+
+/* Film grain overlay for paper texture. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   Typography helpers
+   -------------------------------------------------------------------------- */
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.05; letter-spacing: -0.01em; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.lead { font-size: 1.12rem; color: var(--ink-soft); }
+
+.section-no {
+  font-family: var(--font-mono);
+  color: var(--brand);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.72em 1.3em;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.18s var(--ease), background-color 0.18s, box-shadow 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.btn-primary { background: var(--brand); color: #fff5ee; box-shadow: var(--shadow-sm); }
+.btn-primary:hover { background: var(--brand-deep); box-shadow: var(--shadow); transform: translateY(-1px); }
+
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.btn-ghost:hover { background: var(--paper-2); border-color: var(--ink-soft); }
+
+.btn-block { width: 100%; }
+.btn[disabled] { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.linkish {
+  background: none; border: none; padding: 0;
+  color: var(--brand-deep); cursor: pointer; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+.field { display: block; margin-bottom: 1.1rem; }
+.field > label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.45rem;
+}
+.input, .textarea {
+  width: 100%;
+  padding: 0.8em 0.9em;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.textarea { resize: vertical; min-height: 8.5rem; line-height: 1.55; }
+.input::placeholder, .textarea::placeholder { color: var(--ink-faint); }
+.input:focus, .textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-tint);
+}
+.field-hint { margin-top: 0.4rem; font-size: 0.82rem; color: var(--ink-faint); }
+.field-error { margin-top: 0.4rem; font-size: 0.85rem; color: var(--red); font-weight: 600; }
+
+/* Custom PDF dropzone (hides the native file input). */
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.1rem 1.2rem;
+  background: var(--paper-2);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+}
+.dropzone:hover, .dropzone.is-dragover { border-color: var(--brand); background: var(--brand-tint); }
+.dropzone input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.dropzone .dz-icon {
+  flex: none; width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--card); border: 1px solid var(--line-strong);
+  font-family: var(--font-mono); color: var(--brand); font-size: 1.1rem;
+}
+.dropzone .dz-text { line-height: 1.35; }
+.dropzone .dz-text strong { font-weight: 600; }
+.dropzone .dz-text span { display: block; font-size: 0.82rem; color: var(--ink-faint); }
+.dropzone.has-file { border-style: solid; border-color: var(--green); background: var(--green-tint); }
+.dropzone.has-file .dz-icon { color: var(--green); }
+
+/* --------------------------------------------------------------------------
+   Masthead (top bar)
+   -------------------------------------------------------------------------- */
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem clamp(1rem, 4vw, 2.4rem);
+  background: rgba(245, 239, 227, 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: baseline; gap: 0.55rem; cursor: pointer; }
+.brand .brand-mark { color: var(--brand); font-size: 1.12rem; line-height: 0; }
+/* The document logo mark: scales with its context's font-size, tinted via currentColor. */
+.brand-svg { width: 1em; height: 1em; display: inline-block; vertical-align: -0.14em; }
+.brand .brand-name { font-family: var(--font-display); font-weight: 600; font-size: 1.35rem; letter-spacing: -0.01em; }
+.brand .brand-kicker {
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.masthead-actions { display: flex; align-items: center; gap: 1rem; }
+.masthead-user { font-family: var(--font-mono); font-size: 0.82rem; color: var(--ink-soft); }
+@media (max-width: 620px) { .masthead-user { display: none; } .brand .brand-kicker { display: none; } }
+
+/* Left cluster: the off-canvas toggle sits beside the brand. */
+.masthead-left { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+.masthead-toggle {
+  display: inline-flex; align-items: center; gap: 0.45em;
+  padding: 0.5em 0.85em; border-radius: var(--radius-sm);
+  background: var(--card); border: 1px solid var(--line-strong); color: var(--ink);
+  font-family: var(--font-ui); font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s var(--ease);
+}
+.masthead-toggle:hover { background: var(--paper-2); border-color: var(--ink-soft); }
+.masthead-toggle:active { transform: translateY(1px); }
+.masthead-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.masthead-toggle .mt-ico { font-size: 1.05em; line-height: 1; }
+@media (max-width: 620px) { .masthead-toggle .mt-label { display: none; } }
+
+/* --------------------------------------------------------------------------
+   Generic layout
+   -------------------------------------------------------------------------- */
+.container { max-width: var(--maxw); margin: 0 auto; padding: clamp(1.6rem, 4vw, 3.2rem) clamp(1rem, 4vw, 2.4rem) 5rem; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.page-head h1 { font-size: clamp(2rem, 5vw, 3.1rem); }
+.page-head .eyebrow { margin-bottom: 0.6rem; }
+.divider { height: 1px; background: var(--line); border: none; margin: 0; }
+
+/* Page-load staggered reveal. */
+.stagger > * { opacity: 0; transform: translateY(12px); animation: rise 0.6s var(--ease) forwards; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger > *:nth-child(3) { animation-delay: 0.18s; }
+.stagger > *:nth-child(4) { animation-delay: 0.26s; }
+.stagger > *:nth-child(5) { animation-delay: 0.34s; }
+.stagger > *:nth-child(6) { animation-delay: 0.42s; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* --------------------------------------------------------------------------
+   Auth view (split: ink hero | paper form)
+   -------------------------------------------------------------------------- */
+.auth { display: grid; grid-template-columns: 1.05fr 0.95fr; min-height: 100vh; }
+.auth-hero {
+  position: relative;
+  overflow: hidden;
+  background: #1f1a14;
+  color: var(--paper);
+  padding: clamp(2rem, 5vw, 4.5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.auth-hero::after {
+  /* Oversized decorative editorial glyph. */
+  content: "\201D"; /* right double quotation mark */
+  position: absolute;
+  right: -2rem; bottom: -8rem;
+  font-family: var(--font-display);
+  font-size: 34rem;
+  line-height: 1;
+  color: var(--brand);
+  opacity: 0.16;
+  pointer-events: none;
+}
+.auth-hero .brand .brand-name, .auth-hero .brand .brand-kicker { color: var(--paper); }
+.auth-hero h1 { font-size: clamp(2.4rem, 4vw, 3.8rem); max-width: 14ch; }
+.auth-hero h1 em { color: var(--brand); font-style: italic; }
+.auth-hero .hero-sub { max-width: 38ch; color: #d8cdb9; font-size: 1.05rem; }
+.hero-steps { list-style: none; padding: 0; display: grid; gap: 0.7rem; }
+.hero-steps li { display: flex; gap: 0.8rem; align-items: baseline; color: #cfc4b0; }
+.hero-steps .n { font-family: var(--font-mono); color: var(--brand); font-size: 0.8rem; }
+
+.auth-panel { display: grid; place-items: center; padding: clamp(2rem, 5vw, 4rem); }
+.auth-card { width: min(420px, 100%); }
+.auth-tabs { display: flex; gap: 0.4rem; margin-bottom: 1.6rem; border-bottom: 1px solid var(--line); }
+.auth-tab {
+  background: none; border: none; padding: 0.6rem 0.2rem; margin-right: 1.2rem;
+  font-weight: 600; color: var(--ink-faint); cursor: pointer;
+  border-bottom: 2px solid transparent; transform: translateY(1px);
+}
+.auth-tab.is-active { color: var(--ink); border-bottom-color: var(--brand); }
+
+@media (max-width: 860px) {
+  .auth { grid-template-columns: 1fr; }
+  .auth-hero { min-height: auto; padding-bottom: 3rem; }
+  .auth-hero::after { font-size: 18rem; bottom: -4rem; }
+  .hero-steps { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Landing - the public front door (logged-out marketing page)
+   --------------------------------------------------------------------------
+   "The Front Page": an editorial hero with a live résumé-diff demo, a stats
+   strip, a four-pass walkthrough, a feature gallery, the grounding promise, and
+   CTAs into auth. Scroll-reveal + count-up motion, all token-driven.
+   -------------------------------------------------------------------------- */
+.btn-lg { padding: 0.95em 1.7em; font-size: 1.05rem; }
+
+/* Sticky translucent nav (mirrors the in-app masthead). */
+.lp-nav {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.85rem clamp(1rem, 5vw, 3rem);
+  background: rgba(245, 239, 227, 0.7);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+}
+.lp-nav.is-scrolled { border-bottom-color: var(--line); background: rgba(245, 239, 227, 0.92); box-shadow: var(--shadow-sm); }
+.lp-nav .brand { cursor: pointer; }
+.lp-nav-actions { display: flex; align-items: center; gap: 0.6rem; }
+@media (max-width: 480px) { .lp-nav #lp-signin { display: none; } .lp-nav .brand-kicker { display: none; } }
+
+/* Hero: editorial copy beside a live "marked-up résumé" card. */
+.lp-hero {
+  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(1.5rem, 5vw, 4rem); align-items: center;
+  max-width: var(--maxw); margin: 0 auto;
+  padding: clamp(2.5rem, 8vw, 6rem) clamp(1rem, 5vw, 3rem) clamp(2rem, 5vw, 4rem);
+}
+.lp-h1 { font-size: clamp(2.6rem, 6.5vw, 5rem); line-height: 0.98; letter-spacing: -0.025em; }
+.lp-h1 em { font-style: italic; color: var(--brand); }
+.lp-lead { margin-top: 1.3rem; font-size: clamp(1.05rem, 1.6vw, 1.25rem); color: var(--ink-soft); max-width: 46ch; line-height: 1.6; }
+.lp-hero-cta { margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.lp-microcopy { margin-top: 1.1rem; font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.03em; color: var(--ink-faint); }
+
+/* The live diff demo card (tilted, lifts straight on hover). */
+.lp-hero-demo { perspective: 1200px; }
+.lp-diff {
+  background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); overflow: hidden;
+  transform: rotate(-1.2deg); transition: transform 0.45s var(--ease);
+}
+.lp-hero-demo:hover .lp-diff { transform: rotate(0deg) translateY(-3px); }
+.lp-diff-head { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 1rem; background: var(--paper-2); border-bottom: 1px solid var(--line); }
+.lp-diff-dots {
+  width: 2.6rem; height: 0.6rem; flex: none;
+  background:
+    radial-gradient(circle 4px at 4px 50%, var(--red) 98%, transparent 100%),
+    radial-gradient(circle 4px at 18px 50%, var(--gold) 98%, transparent 100%),
+    radial-gradient(circle 4px at 32px 50%, var(--green) 98%, transparent 100%);
+}
+.lp-diff-file { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--ink-faint); }
+.lp-diff-body { padding: 1.2rem; display: grid; gap: 0.8rem; transition: opacity 0.3s var(--ease), transform 0.3s var(--ease); }
+.lp-diff-body.is-swap { opacity: 0; transform: translateY(8px); }
+.lp-diff-old, .lp-diff-new { border-radius: var(--radius-sm); padding: 0.8rem 0.9rem; }
+.lp-diff-old { background: var(--red-tint); }
+.lp-diff-new { background: var(--green-tint); }
+.lp-diff-old .diff-tag, .lp-diff-new .diff-tag {
+  display: block; font-family: var(--font-mono); font-size: 0.62rem;
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.35rem;
+}
+.lp-diff-old .diff-tag { color: var(--red); }
+.lp-diff-new .diff-tag { color: var(--green); }
+.lp-diff-old p { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--red); }
+.lp-diff-new p { color: #1f5638; font-weight: 500; }
+.lp-diff-why { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-faint); line-height: 1.5; }
+.lp-diff-why b { color: var(--ink-soft); }
+@media (max-width: 880px) { .lp-hero { grid-template-columns: 1fr; } .lp-diff { transform: none; } }
+
+/* By-the-numbers strip. */
+.lp-strip {
+  max-width: var(--maxw); margin: 0 auto;
+  padding: clamp(1.4rem, 3vw, 2rem) clamp(1rem, 5vw, 3rem);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.lp-strip-item { display: flex; flex-direction: column; gap: 0.25rem; }
+.lp-strip-n { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 2.9rem); font-weight: 600; line-height: 1; color: var(--brand); display: flex; align-items: baseline; }
+.lp-strip-pre { font-size: 0.6em; margin-right: 0.08em; color: var(--ink-faint); }
+.lp-strip-unit { font-size: 0.58em; }
+.lp-strip-label { font-size: 0.88rem; color: var(--ink-soft); }
+@media (max-width: 620px) { .lp-strip { grid-template-columns: repeat(2, 1fr); gap: 1.4rem 1rem; } }
+
+/* Generic landing section + heading. */
+.lp-section { max-width: var(--maxw); margin: 0 auto; padding: clamp(3rem, 8vw, 6rem) clamp(1rem, 5vw, 3rem); }
+.lp-sec-head { margin-bottom: clamp(1.8rem, 4vw, 3rem); max-width: 26ch; }
+.lp-sec-head .eyebrow { margin-bottom: 0.8rem; }
+.lp-sec-head h2 { font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.04; }
+
+/* How it works - numbered editorial steps. */
+.lp-steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.6rem 2.4rem; }
+.lp-step { display: flex; gap: 1.1rem; align-items: flex-start; }
+.lp-step-n { font-family: var(--font-mono); font-size: 0.9rem; color: var(--brand); padding-top: 0.3rem; flex: none; }
+.lp-step h3 { font-size: 1.3rem; margin-bottom: 0.35rem; }
+.lp-step p { color: var(--ink-soft); line-height: 1.6; }
+@media (max-width: 680px) { .lp-steps { grid-template-columns: 1fr; } }
+
+/* Feature gallery. */
+.lp-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+.lp-feature {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.5rem 1.4rem; box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s;
+}
+.lp-feature:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--line-strong); }
+.lp-feature-ic {
+  display: inline-grid; place-items: center; width: 2.6rem; height: 2.6rem; margin-bottom: 0.9rem;
+  border-radius: var(--radius-sm); background: var(--brand-tint); color: var(--brand-deep);
+  font-family: var(--font-display); font-size: 1.2rem;
+}
+.lp-feature h3 { font-size: 1.25rem; margin-bottom: 0.4rem; }
+.lp-feature p { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.55; }
+@media (max-width: 860px) { .lp-feature-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .lp-feature-grid { grid-template-columns: 1fr; } }
+
+/* Grounding promise - inverted ink panel for emphasis. */
+.lp-honesty-wrap { max-width: var(--maxw); margin: 0 auto; padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 5vw, 3rem); }
+.lp-honesty {
+  position: relative; overflow: hidden;
+  background: #1f1a14; color: var(--paper); border-radius: var(--radius-lg);
+  padding: clamp(2.4rem, 6vw, 4.2rem) clamp(1.6rem, 5vw, 3.5rem);
+}
+.lp-honesty .eyebrow { color: #b9ac96; margin-bottom: 0.9rem; }
+.lp-honesty h2 { font-size: clamp(2rem, 4.5vw, 3.2rem); margin-bottom: 1rem; max-width: 18ch; }
+.lp-honesty h2 + p { color: #d8cdb9; max-width: 60ch; font-size: 1.1rem; line-height: 1.7; }
+.lp-honesty::after {
+  content: "\201D"; position: absolute; right: 1.5rem; bottom: -7rem;
+  font-family: var(--font-display); font-size: 22rem; line-height: 1; color: var(--brand); opacity: 0.16; pointer-events: none;
+}
+
+/* Final CTA. */
+.lp-cta { max-width: 720px; margin: 0 auto; text-align: center; padding: clamp(3rem, 8vw, 6rem) clamp(1rem, 5vw, 3rem); }
+.lp-cta h2 { font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.05; margin-bottom: 0.8rem; }
+.lp-cta p { color: var(--ink-soft); font-size: 1.1rem; margin-bottom: 1.8rem; }
+
+/* Footer (full-bleed). */
+.lp-footer {
+  border-top: 1px solid var(--line); background: var(--paper-2);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+  padding: 2rem clamp(1rem, 5vw, 3rem);
+}
+.lp-foot-tag { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+.lp-foot-actions { display: flex; align-items: center; gap: 1.2rem; }
+
+/* Scroll-reveal, shared across the landing. */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+.reveal.is-visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+/* --------------------------------------------------------------------------
+   Dashboard / roles list
+   -------------------------------------------------------------------------- */
+.roles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+.role-card {
+  position: relative;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  padding: 1.4rem 1.4rem 1.2rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s, border-color 0.2s;
+}
+.role-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--line-strong); }
+.role-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.role-card .role-company { font-family: var(--font-display); font-size: 1.45rem; font-weight: 600; }
+.role-card .role-title { color: var(--ink-soft); font-weight: 500; }
+.role-card .role-meta { margin-top: auto; padding-top: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+.role-card .role-date { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); }
+.role-card .role-arrow { color: var(--brand); font-size: 1.2rem; transition: transform 0.2s var(--ease); }
+.role-card:hover .role-arrow { transform: translateX(4px); }
+
+/* Empty state */
+.empty {
+  text-align: center; padding: 4rem 1.5rem; border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg); background: var(--paper-2);
+}
+.empty h2 { font-size: 1.9rem; margin-bottom: 0.6rem; }
+.empty p { color: var(--ink-soft); max-width: 42ch; margin: 0 auto 1.5rem; }
+
+/* --------------------------------------------------------------------------
+   Home - "The Front Page" (the signed-in landing; reachable via the logo)
+   --------------------------------------------------------------------------
+   The job hunt as the masthead of a publication you edit: a dateline, an
+   editorial greeting, a "by the numbers" deck, a lead story (strongest match),
+   and a grid of recent dispatches. Built entirely from the existing tokens.
+   -------------------------------------------------------------------------- */
+.home { max-width: var(--maxw); margin: 0 auto; padding: clamp(1.6rem, 4vw, 3rem) clamp(1rem, 4vw, 2.4rem) 5rem; }
+
+/* A quiet folded eyebrow (brand + date) replaces the old heavy dateline rule. */
+.home-kicker { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.5ch; }
+.home-kicker .brand-mark { color: var(--brand); }
+
+/* Greeting hero. */
+.home-hero { margin-bottom: clamp(2.4rem, 5vw, 3.4rem); }
+.home-hero .home-kicker { margin-bottom: 1rem; }
+.home-greeting { font-size: clamp(2.3rem, 5.5vw, 3.9rem); line-height: 1.02; letter-spacing: -0.02em; }
+.home-greeting em { font-style: italic; color: var(--brand); position: relative; }
+/* A fine underline draws itself in beneath the name (instant under reduced-motion). */
+.home-greeting em::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0.02em; height: 0.05em;
+  background: var(--brand); transform: scaleX(0); transform-origin: left;
+  animation: home-underline 0.8s var(--ease) 0.45s both;
+}
+@keyframes home-underline { to { transform: scaleX(1); } }
+.home-status { margin-top: 1rem; font-size: 1.08rem; color: var(--ink-soft); max-width: 54ch; }
+.home-cta { margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: 0.8rem; }
+
+/* "By the numbers": four figures in one quiet card, split by hairlines. */
+.home-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  margin-bottom: clamp(2.4rem, 5vw, 3.4rem);
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.home-stat { padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.home-stat + .home-stat { border-left: 1px solid var(--line); }
+.home-stat-n { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.9rem, 3.4vw, 2.5rem); line-height: 1; color: var(--ink); }
+.home-stat.is-alert .home-stat-n { color: var(--red); }
+.home-stat-l { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+@media (max-width: 620px) {
+  .home-stats { grid-template-columns: repeat(2, 1fr); }
+  .home-stat:nth-child(3) { border-left: none; }
+  .home-stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 380px) {
+  .home-stats { grid-template-columns: 1fr; }
+  .home-stat + .home-stat { border-left: none; border-top: 1px solid var(--line); }
+}
+
+/* The feed heading. */
+.home-feed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: 0 0 1.2rem; }
+.home-feed-head h2 { font-size: 1.5rem; }
+
+/* Lead story: the strongest match, featured with a warm wash + its fit ring. */
+.home-lead {
+  display: grid; grid-template-columns: 1fr auto; gap: clamp(1.2rem, 3vw, 2.4rem); align-items: center;
+  padding: clamp(1.4rem, 3vw, 2.2rem);
+  margin-bottom: clamp(1.8rem, 4vw, 2.6rem);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer; text-align: left;
+  transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease), border-color 0.22s;
+}
+.home-lead:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.home-lead:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.home-lead .eyebrow { color: var(--brand); margin-bottom: 0.7rem; }
+.home-lead h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.04; }
+.home-lead-role { color: var(--ink-soft); font-weight: 500; font-size: 1.05rem; margin-top: 0.25rem; }
+.home-lead-sum { margin-top: 0.95rem; color: var(--ink); max-width: 56ch; line-height: 1.6; }
+.home-lead-open { display: inline-block; margin-top: 1.15rem; font-weight: 600; color: var(--brand-deep); }
+.home-lead:hover .home-lead-open { text-decoration: underline; text-underline-offset: 3px; }
+.home-lead-score { display: grid; place-items: center; }
+@media (max-width: 640px) {
+  .home-lead { grid-template-columns: 1fr; }
+  .home-lead-score { justify-self: start; }
+}
+
+/* Recent-dispatch cards reuse .role-card; add a top row + a fit chip. */
+button.role-card { font: inherit; width: 100%; }
+.role-card-top { display: flex; margin-bottom: 0.2rem; }
+.role-fit {
+  display: inline-flex; align-items: center; gap: 0.4em;
+  padding: 0.26em 0.7em; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+}
+.role-fit.band-good { color: var(--green); background: var(--green-tint); }
+.role-fit.band-mid  { color: var(--gold);  background: var(--gold-tint); }
+.role-fit.band-low  { color: var(--red);   background: var(--red-tint); }
+.role-fit-none { color: var(--ink-faint); border-color: var(--line-strong); background: var(--paper-2); }
+
+/* The blank front page (new users). */
+.home-empty {
+  text-align: center; padding: clamp(3rem, 7vw, 5rem) 1.5rem;
+  border: 1.5px dashed var(--line-strong); border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.home-empty-mark { font-family: var(--font-display); color: var(--brand); font-size: 3rem; line-height: 1; margin-bottom: 0.7rem; }
+.home-empty h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: 0.7rem; }
+.home-empty p { color: var(--ink-soft); max-width: 52ch; margin: 0 auto 1.7rem; line-height: 1.65; }
+
+/* --------------------------------------------------------------------------
+   Status pills
+   -------------------------------------------------------------------------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 0.45em;
+  padding: 0.3em 0.75em; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid;
+}
+.pill::before { content: ""; width: 0.5em; height: 0.5em; border-radius: 50%; background: currentColor; }
+.pill-pending, .pill-processing { color: var(--gold); border-color: var(--gold); background: var(--gold-tint); }
+.pill-completed { color: var(--green); border-color: var(--green); background: var(--green-tint); }
+.pill-failed { color: var(--red); border-color: var(--red); background: var(--red-tint); }
+.pill-processing::before { animation: blink 1.1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+/* Kinetic in-progress badges: a soft breathing ring on pending/processing pills
+   so the pipeline feels alive. (Disabled under prefers-reduced-motion below.) */
+.pill-pending, .pill-processing { animation: pill-pulse 1.9s var(--ease) infinite; }
+@keyframes pill-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--gold-tint); }
+  50%      { box-shadow: 0 0 0 3px var(--gold-tint); }
+}
+
+/* --------------------------------------------------------------------------
+   Results "kit" - numbered editorial sections
+   -------------------------------------------------------------------------- */
+.kit-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.kit-head h1 { font-size: clamp(2rem, 4.5vw, 3rem); }
+.kit-head .kit-sub { color: var(--ink-soft); font-weight: 500; }
+
+.kit-section { padding: 2.6rem 0; border-top: 1px solid var(--line); }
+.kit-section > header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.4rem; }
+.kit-section > header h2 { font-size: 1.9rem; }
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow-sm);
+}
+
+/* Fit analysis */
+.fit-top { display: grid; grid-template-columns: auto 1fr; gap: 1.8rem; align-items: center; margin-bottom: 1.8rem; }
+.score-ring {
+  --val: 0;
+  width: 116px; height: 116px; border-radius: 50%;
+  background: conic-gradient(var(--green) calc(var(--val) * 1%), var(--line) 0);
+  display: grid; place-items: center; flex: none;
+}
+.score-ring .score-inner {
+  width: 84px; height: 84px; border-radius: 50%; background: var(--card);
+  display: grid; place-items: center; box-shadow: inset 0 1px 4px rgba(0,0,0,0.06);
+}
+.score-ring .score-num { font-family: var(--font-display); font-size: 2rem; font-weight: 600; line-height: 1; }
+.score-ring .score-of { font-family: var(--font-mono); font-size: 0.6rem; color: var(--ink-faint); letter-spacing: 0.1em; }
+.fit-summary { font-size: 1.05rem; color: var(--ink); }
+
+.fit-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.fit-col h3 { font-family: var(--font-ui); font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.8rem; }
+.fit-col ul { list-style: none; padding: 0; display: grid; gap: 0.6rem; }
+.fit-col li { display: flex; gap: 0.6rem; font-size: 0.95rem; line-height: 1.45; }
+.fit-col li::before { font-family: var(--font-mono); font-weight: 600; flex: none; }
+.fit-met h3 { color: var(--green); } .fit-met li::before { content: "+"; color: var(--green); }
+.fit-missing h3 { color: var(--red); } .fit-missing li::before { content: "!"; color: var(--red); }
+.fit-emph h3 { color: var(--brand); } .fit-emph li::before { content: "\2605"; color: var(--brand); } /* star */
+@media (max-width: 760px) { .fit-cols { grid-template-columns: 1fr; } .fit-top { grid-template-columns: 1fr; text-align: center; justify-items: center; } }
+
+/* Diff view - the centerpiece (proofreader's markup) */
+.diff-summary { margin-bottom: 1.2rem; color: var(--ink-soft); font-style: italic; }
+.diff-list { display: grid; gap: 1rem; }
+.diff-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--card);
+}
+.diff-row .diff-section {
+  grid-column: 1 / -1; padding: 0.55rem 1rem; border-bottom: 1px solid var(--line);
+  background: var(--paper-2); font-family: var(--font-mono); font-size: 0.72rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+}
+.diff-cell { padding: 1.05rem 1.15rem; position: relative; }
+.diff-cell .diff-tag { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
+.diff-old { background: var(--red-tint); border-right: 1px solid var(--line); }
+.diff-old .diff-tag { color: var(--red); }
+.diff-old .diff-text { text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 1.5px; color: var(--ink-soft); }
+.diff-new { background: var(--green-tint); }
+.diff-new .diff-tag { color: var(--green); }
+.diff-new .diff-text { color: #1f5638; font-weight: 500; }
+.diff-cell .diff-text::before { content: attr(data-mark); font-family: var(--font-mono); font-weight: 700; margin-right: 0.5rem; }
+.diff-old .diff-text::before { color: var(--red); }
+.diff-new .diff-text::before { color: var(--green); }
+.diff-rationale {
+  grid-column: 1 / -1; padding: 0.7rem 1.15rem; border-top: 1px dashed var(--line);
+  font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-faint); background: var(--card);
+}
+.diff-rationale b { color: var(--ink-soft); font-weight: 600; }
+@media (max-width: 720px) {
+  .diff-row { grid-template-columns: 1fr; }
+  .diff-old { border-right: none; border-bottom: 1px solid var(--line); }
+}
+
+/* Cover letter - a paper sheet */
+.letter-sheet {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(1.6rem, 4vw, 2.8rem);
+  box-shadow: var(--shadow);
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 1.08rem;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  max-width: 70ch;
+}
+.letter-actions { margin-top: 1rem; display: flex; gap: 0.8rem; }
+
+/* Interview Q&A - accordion */
+.qa-list { display: grid; gap: 0.7rem; }
+.qa {
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); overflow: hidden;
+}
+.qa > summary {
+  list-style: none; cursor: pointer; padding: 1.05rem 1.2rem;
+  display: flex; gap: 0.9rem; align-items: baseline; font-weight: 600;
+}
+.qa > summary::-webkit-details-marker { display: none; }
+.qa > summary .qa-n { font-family: var(--font-mono); color: var(--brand); font-size: 0.85rem; flex: none; }
+.qa > summary .qa-plus { margin-left: auto; color: var(--brand); font-family: var(--font-mono); transition: transform 0.2s var(--ease); }
+.qa[open] > summary .qa-plus { transform: rotate(45deg); }
+.qa .qa-body { padding: 0 1.2rem 1.25rem 3.1rem; }
+.qa .qa-answer { color: var(--ink-soft); white-space: pre-wrap; }
+.qa .qa-grounded {
+  margin-top: 0.8rem; font-family: var(--font-mono); font-size: 0.74rem;
+  color: var(--ink-faint); border-left: 2px solid var(--green); padding-left: 0.7rem;
+}
+
+/* --------------------------------------------------------------------------
+   Command Center - split-screen workspace (roster pipeline + tabbed stage)
+   --------------------------------------------------------------------------
+   A full-bleed dashboard shown once signed in: a sticky left "roster" lists the
+   whole pipeline of applications so the user can jump between them, and the right
+   "stage" presents the four artifacts behind a horizontal tab bar. All colors,
+   type, and shape come from the tokens above - no new design language.
+   -------------------------------------------------------------------------- */
+/* The stage now spans the full width; the roster has become an off-canvas
+   slide-out (below), so there is no persistent split-screen grid. */
+.workspace { display: block; }
+
+/* Live engine diagnostics: a full-width strip of stat cards atop the workspace.
+   Built entirely from the design tokens - no new colours or shapes. */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.9rem;
+  padding: 1.2rem clamp(1rem, 4vw, 2.6rem) 0;
+}
+/* Author `display: grid` would otherwise outrank the UA [hidden] rule, so the
+   strip stays visible even when emptied; restore the hide explicitly. */
+.metrics[hidden] { display: none; }
+.metric {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 1rem 1.15rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s;
+}
+.metric:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.metric-value { font-family: var(--font-display); font-size: 2rem; font-weight: 600; line-height: 1; }
+.metric-label { font-weight: 600; font-size: 0.92rem; }
+.metric-note {
+  font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.metric-total  { border-left-color: var(--brand); } .metric-total  .metric-value { color: var(--brand); }
+.metric-fit    { border-left-color: var(--green); } .metric-fit    .metric-value { color: var(--green); }
+.metric-active { border-left-color: var(--gold);  } .metric-active .metric-value { color: var(--gold); }
+.metric-failed { border-left-color: var(--red);   } .metric-failed .metric-value { color: var(--red); }
+/* The "active pipelines" card breathes a soft gold ring while work is in flight. */
+.metric-active.is-live { animation: metric-pulse 1.9s var(--ease) infinite; }
+@keyframes metric-pulse {
+  0%, 100% { box-shadow: var(--shadow-sm); }
+  50%      { box-shadow: 0 0 0 3px var(--gold-tint), var(--shadow-sm); }
+}
+@media (max-width: 820px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 460px) { .metrics { grid-template-columns: 1fr; } }
+
+/* Off-canvas roster: a fixed slide-out panel, parked to the left until toggled.
+   Its z-index sits above the masthead so it overlays the whole command center. */
+.roster {
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  width: min(88vw, 340px);
+  z-index: 1000;
+  padding: 1.4rem 1.1rem 2rem;
+  background: var(--paper-2);
+  box-shadow: 10px 0 40px -16px rgba(60, 44, 24, 0.5);
+  overflow-y: auto;
+  overflow-x: hidden;              /* keep the item hover lift from spawning a phantom h-scrollbar */
+  transform: translateX(-100%);    /* default: hidden off-screen to the left */
+  visibility: hidden;              /* also drop it from the tab order while closed */
+  transition: transform 0.3s var(--ease), visibility 0.3s var(--ease);
+}
+.roster.is-open { transform: translateX(0); visibility: visible; }
+
+/* Dark scrim behind the open sidebar; fades cleanly and closes it on click. */
+.sidebar-backdrop {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(34, 29, 23, 0.45);
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.3s var(--ease), visibility 0.3s var(--ease);
+}
+.sidebar-backdrop.is-open { opacity: 1; visibility: visible; }
+.roster-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+  margin-bottom: 1.1rem;
+}
+.roster-head .eyebrow { margin: 0; }
+.roster-new {
+  flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-sm);
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--brand); color: #fff5ee; border: none;
+  font-size: 1.2rem; line-height: 1; box-shadow: var(--shadow-sm);
+  transition: background 0.18s, transform 0.18s var(--ease);
+}
+.roster-new:hover { background: var(--brand-deep); transform: translateY(-1px); }
+.roster-new:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Live filter for the pipeline (sits under the roster head / new button). */
+.roster-search {
+  width: 100%;
+  margin-bottom: 0.9rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.88rem;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.roster-search::placeholder { color: var(--ink-faint); }
+.roster-search:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+
+.roster-list { display: grid; gap: 0.55rem; }
+.roster-item {
+  display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.55rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color 0.18s, transform 0.18s var(--ease), box-shadow 0.18s, background 0.18s;
+}
+.roster-item:hover { border-color: var(--line-strong); transform: translateY(-2px); box-shadow: var(--shadow); }
+.roster-item.is-active { border-left-color: var(--brand); box-shadow: var(--shadow-sm); }
+.roster-item.is-selected { background: var(--brand-tint); border-color: var(--line-strong); }
+.roster-item .ri-check { margin-top: 0.25rem; width: 0.95rem; height: 0.95rem; accent-color: var(--brand); cursor: pointer; flex: none; }
+.roster-item .ri-body { display: grid; gap: 0.4rem; min-width: 0; }
+.roster-item .ri-main { background: none; border: none; padding: 0; text-align: left; cursor: pointer; display: grid; gap: 0.1rem; min-width: 0; }
+.roster-item .ri-main:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+.roster-item .ri-company { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; line-height: 1.15; }
+.roster-item .ri-title { color: var(--ink-soft); font-size: 0.85rem; line-height: 1.3; }
+.roster-item .ri-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.roster-item .ri-date { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-faint); }
+.roster-item .pill { font-size: 0.6rem; padding: 0.2em 0.5em; }
+
+/* Per-role application-status dropdown. */
+.ri-status {
+  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.03em;
+  padding: 0.2rem 0.4rem; border-radius: var(--radius-sm); max-width: 62%;
+  border: 1px solid var(--line-strong); background: var(--paper-2); color: var(--ink-soft); cursor: pointer;
+}
+.ri-status:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-tint); }
+
+/* Bulk-action bar, revealed when one or more roster items are ticked. */
+.roster-actions {
+  display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.85rem;
+  padding: 0.45rem 0.6rem; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.roster-sel-count { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); margin-right: auto; }
+.roster-del-btn { padding: 0.4em 0.85em; font-size: 0.82rem; color: var(--red); border-color: var(--red); }
+.roster-del-btn:hover { background: var(--red-tint); border-color: var(--red); }
+
+/* Per-artifact pane toolbar (Regenerate / Download). */
+.pane-tools { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.4rem; }
+.pane-btn { padding: 0.5em 1em; font-size: 0.85rem; }
+.pane-btn .btn-ico { font-family: var(--font-mono); font-size: 0.95em; }
+
+/* Right stage: the tabbed artifacts. */
+.stage { min-width: 0; padding: clamp(1.4rem, 3vw, 2.6rem) clamp(1rem, 4vw, 2.6rem) 5rem; }
+.stage-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap; margin-bottom: 1.3rem; }
+.stage-head h1 { font-size: clamp(1.7rem, 3.5vw, 2.6rem); }
+.stage-head .stage-sub { color: var(--ink-soft); font-weight: 500; }
+
+/* Horizontal tab navigation (mirrors the .auth-tab is-active pattern). */
+.tabs {
+  display: flex; gap: 0.1rem; flex-wrap: nowrap;
+  /* Allow horizontal scroll for many/narrow tabs, but pin overflow-y to hidden:
+     otherwise CSS computes it to `auto`, and the tabs' translateY(1px) spawns a
+     useless ~1px vertical scrollbar at the top-right of the stage. */
+  overflow-x: auto; overflow-y: hidden;
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  position: relative;
+  background: none; border: none; cursor: pointer;
+  padding: 0.7rem 1.05rem; white-space: nowrap;
+  font-family: var(--font-ui); font-weight: 600; font-size: 0.95rem;
+  color: var(--ink-faint);
+  border-bottom: 2px solid transparent; transform: translateY(1px);
+  transition: color 0.18s, border-color 0.18s;
+  display: inline-flex; align-items: baseline; gap: 0.5rem;
+}
+.tab:hover { color: var(--ink-soft); }
+.tab.is-active { color: var(--ink); border-bottom-color: var(--brand); }
+.tab .tab-no { font-family: var(--font-mono); font-size: 0.72rem; color: var(--brand); letter-spacing: 0.06em; }
+.tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+/* Tab panes: only the .is-active pane is shown. */
+.tab-pane { display: none; padding-top: 1.8rem; }
+.tab-pane.is-active { display: block; animation: rise 0.4s var(--ease); }
+.pane-head { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.4rem; }
+.pane-head h2 { font-size: 1.8rem; }
+.pane-note { color: var(--ink-faint); font-style: italic; padding: 1.2rem 0; }
+
+/* No narrow-screen reflow needed: the off-canvas roster overlays the stage and
+   its width (min(88vw, 340px)) already adapts down to small screens. */
+
+/* --------------------------------------------------------------------------
+   Loading pipeline (the 4 agents at work)
+   -------------------------------------------------------------------------- */
+.loading-wrap { padding: 3rem 0; text-align: center; }
+.loading-wrap h2 { font-size: 2rem; margin-bottom: 0.5rem; }
+.loading-wrap p { color: var(--ink-soft); margin-bottom: 2.4rem; }
+.pipeline { list-style: none; padding: 0; max-width: 560px; margin: 0 auto; display: grid; gap: 0.8rem; }
+.pipeline li {
+  display: flex; align-items: center; gap: 1rem; text-align: left;
+  padding: 1rem 1.2rem; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; position: relative;
+}
+.pipeline li::after {
+  /* sweeping shimmer to signal indeterminate work */
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(194,86,47,0.14) 50%, transparent 70%);
+  transform: translateX(-100%); animation: sweep 1.8s var(--ease) infinite;
+}
+.pipeline li:nth-child(2)::after { animation-delay: 0.25s; }
+.pipeline li:nth-child(3)::after { animation-delay: 0.5s; }
+.pipeline li:nth-child(4)::after { animation-delay: 0.75s; }
+@keyframes sweep { to { transform: translateX(100%); } }
+.pipeline .p-n { font-family: var(--font-mono); color: var(--brand); font-size: 0.85rem; flex: none; }
+.pipeline .p-name { font-weight: 600; }
+.pipeline .p-note { color: var(--ink-faint); font-size: 0.85rem; margin-left: auto; }
+@media (max-width: 540px) { .pipeline .p-note { display: none; } }
+
+/* --------------------------------------------------------------------------
+   Artifact generation status pill (shown in the pane being regenerated)
+   A compact green pill with an inline writing-hand icon: a sheet with lines and
+   a hand holding a pen, the pen sliding left and right so it reads as active
+   writing. Uses the success-green tokens; the global reduced-motion rule near
+   the foot of this file stills the pen.
+   -------------------------------------------------------------------------- */
+.gen-loading { display: flex; justify-content: center; padding: 2.4rem 1rem 2rem; }
+.gen-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px 9px 12px;
+  border-radius: 999px;
+  background: var(--green-tint); color: var(--green);
+  font-family: var(--font-ui); font-weight: 600; font-size: 0.94rem;
+  border: 1px solid rgba(47, 111, 78, 0.22);
+  box-shadow: var(--shadow-sm);
+}
+.gen-ico { width: 34px; height: 26px; flex: none; overflow: visible; }
+.gp-paper { fill: var(--card); stroke: currentColor; stroke-width: 1.3; }
+.gp-line { stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; opacity: 0.4; }
+.gp-pen { stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.gp-fist rect, .gp-thumb { fill: currentColor; }
+.gp-knuckle { stroke: var(--green-tint); stroke-width: 0.9; stroke-linecap: round; }
+
+/* the pen writes back and forth across the page */
+.gp-hand { animation: gp-write 1.5s ease-in-out infinite; }
+@keyframes gp-write { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3.5px); } }
+
+/* Failure / notice cards */
+.notice { padding: 1.4rem 1.5rem; border-radius: var(--radius); border: 1px solid; }
+.notice-fail { background: var(--red-tint); border-color: var(--red); }
+.notice-fail h2 { color: var(--red); font-size: 1.4rem; margin-bottom: 0.4rem; }
+.notice code { font-family: var(--font-mono); font-size: 0.85rem; }
+
+/* --------------------------------------------------------------------------
+   Toasts
+   -------------------------------------------------------------------------- */
+.toasts { position: fixed; bottom: 1.4rem; right: 1.4rem; z-index: 9500; display: grid; gap: 0.6rem; max-width: min(380px, 90vw); }
+.toast {
+  padding: 0.9rem 1.1rem; border-radius: var(--radius); background: var(--ink); color: var(--paper);
+  box-shadow: var(--shadow-lg); font-size: 0.92rem; display: flex; gap: 0.7rem; align-items: flex-start;
+  animation: rise 0.35s var(--ease);
+}
+.toast-error { background: #7d271c; }
+.toast-success { background: #1f5638; }
+.toast .toast-x { margin-left: auto; cursor: pointer; opacity: 0.7; background: none; border: none; color: inherit; }
+
+/* --------------------------------------------------------------------------
+   Misc utilities
+   -------------------------------------------------------------------------- */
+.back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-soft); background: none; border: none; cursor: pointer; margin-bottom: 1.4rem; }
+.back-link:hover { color: var(--brand); }
+.spinner { width: 1.1em; height: 1.1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.center-screen { min-height: 70vh; display: grid; place-items: center; color: var(--ink-faint); }
+
+/* --------------------------------------------------------------------------
+   Extra tools: ATS card, voice practice, salary coach, calendar
+   -------------------------------------------------------------------------- */
+/* Stage-header actions (status pill + follow-up button). */
+.stage-head-actions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.stage-cal-btn { padding: 0.45em 0.9em; font-size: 0.82rem; }
+
+/* Shared circular score badge (ATS + interview grade). */
+.score-badge {
+  flex: none; display: inline-grid; place-items: center;
+  width: 62px; height: 62px; border-radius: 50%;
+  font-family: var(--font-display); line-height: 1; border: 2px solid currentColor;
+}
+.score-badge-num { font-size: 1.5rem; font-weight: 600; }
+.score-badge-of { font-family: var(--font-mono); font-size: 0.55rem; opacity: 0.8; }
+.band-good { color: var(--green); background: var(--green-tint); }
+.band-mid { color: var(--gold); background: var(--gold-tint); }
+.band-low { color: var(--red); background: var(--red-tint); }
+
+/* ATS result card (below the resume diff). */
+.ats-result { margin-top: 1.4rem; }
+.ats-card {
+  background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--brand);
+  border-radius: var(--radius); padding: 1.3rem 1.4rem; box-shadow: var(--shadow-sm);
+}
+.ats-card.is-loading { display: flex; align-items: center; gap: 0.6rem; color: var(--ink-soft); border-left-color: var(--line); }
+.ats-head { display: flex; align-items: center; gap: 1.1rem; }
+.ats-head h3 { font-size: 1.2rem; }
+.ats-sub { color: var(--ink-faint); font-size: 0.85rem; }
+.ats-feedback { margin: 1rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; }
+.ats-feedback li { line-height: 1.45; }
+/* Explainer at the foot of the card: score reading + "what this scan is". */
+.ats-about { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px dashed var(--line); }
+.ats-detail { font-size: 0.95rem; color: var(--ink); margin-bottom: 0.5rem; }
+.ats-detail strong { color: var(--ink); }
+.ats-note { font-size: 0.82rem; line-height: 1.55; color: var(--ink-faint); }
+.ats-note em { font-style: italic; color: var(--ink-soft); }
+
+/* Voice practice (interview pane). */
+.qa-practice-row { margin-top: 1rem; }
+.qa-practice-btn { padding: 0.4em 0.9em; font-size: 0.82rem; }
+.qa-practice-out:not(:empty) { margin-top: 0.9rem; }
+.practice-note { color: var(--ink-faint); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+.practice-transcript {
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem; margin-bottom: 0.8rem; color: var(--ink-soft); line-height: 1.5;
+}
+.practice-tag {
+  display: block; font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.3rem;
+}
+
+/* Interview grade card. */
+.grade-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; }
+.grade-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.grade-head .score-badge { width: 50px; height: 50px; }
+.grade-head .score-badge-num { font-size: 1.25rem; }
+.grade-assess { color: var(--ink); line-height: 1.5; }
+.grade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.grade-col h4 { font-family: var(--font-ui); font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
+.grade-col ul { list-style: none; padding: 0; display: grid; gap: 0.4rem; }
+.grade-col li { display: flex; gap: 0.5rem; font-size: 0.92rem; line-height: 1.4; }
+.grade-col li::before { font-family: var(--font-mono); font-weight: 600; flex: none; }
+.grade-strengths h4 { color: var(--green); } .grade-strengths li::before { content: "+"; color: var(--green); }
+.grade-improve h4 { color: var(--brand); } .grade-improve li::before { content: "\2192"; color: var(--brand); }
+@media (max-width: 620px) { .grade-cols { grid-template-columns: 1fr; } }
+
+/* Salary coach (5th tab). */
+.salary-coach { max-width: 760px; }
+.salary-intro { color: var(--ink-soft); margin-bottom: 1.2rem; }
+.salary-form { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+.salary-form .input { flex: 1 1 220px; }
+.salary-scripts { display: grid; gap: 1.1rem; }
+.salary-script {
+  background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--brand);
+  border-radius: var(--radius); padding: 1.3rem 1.4rem; box-shadow: var(--shadow-sm);
+}
+.salary-script header { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.6rem; }
+.salary-script-n { font-family: var(--font-mono); color: var(--brand); font-size: 0.85rem; }
+.salary-script h3 { font-size: 1.2rem; }
+.salary-script p { color: var(--ink); line-height: 1.7; white-space: pre-wrap; }
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  .stagger > * { opacity: 1; transform: none; }
+}
