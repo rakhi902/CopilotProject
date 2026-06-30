@@ -1,105 +1,28 @@
-<<<<<<< HEAD
 # Job Application Co-Pilot
 
-**Your editor for the job hunt.** Hand over your résumé and a job description, and
-a team of AI agents reads your real experience and assembles a tailored
-application kit: a fit analysis, a rewritten résumé, a cover letter, and interview
-prep — all grounded in what your résumé actually says, never invented.
+A web app that helps you apply for jobs. You give it your résumé and a job posting, and it builds a tailored application for you: a fit score, a rewritten résumé, a cover letter, and interview questions to practice with.
 
-The backend is a FastAPI service that runs a LangGraph multi-agent pipeline. The
-frontend is a single-page app built from plain HTML, CSS, and JavaScript (no build
-step). **Local development is zero-setup: it runs on a SQLite file with no
-database server to install.** PostgreSQL is used only for production deployment.
-
----
-
-## Table of contents
-
-- [What it does](#what-it-does)
-- [How it works](#how-it-works)
-- [Architecture & tech stack](#architecture--tech-stack)
-- [Project layout](#project-layout)
-- [Data model](#data-model)
-- [API overview](#api-overview)
-- [Prerequisites](#prerequisites)
-- [Run it on macOS](#run-it-on-macos)
-- [Run it on Windows](#run-it-on-windows)
-- [Configuration](#configuration)
-- [Running the tests](#running-the-tests)
-- [Deploying to Render](#deploying-to-render)
-- [Design notes](#design-notes)
+It runs on your own computer. The writing is done by an AI model through Groq, so you'll need a free key for that part. There's no database to install, and everything runs smoothly.
 
 ---
 
 ## What it does
 
-You create an account, upload your résumé (PDF), and paste a job description (or
-just give a link and the backend scrapes it). A few seconds later you get a
-complete, role-specific kit:
+You make an account, upload your résumé as a PDF, and paste in a job description (or just give it the link and it grabs the text itself). A few seconds later you get back:
 
-**The four generated artifacts**
+- **A fit score.** A number from 0 to 100, plus what you already match, what you're missing, and the strengths to lead with.
+- **A rewritten résumé.** Your bullet points reworked for this exact job, shown side by side: the old line crossed out in red, the new one in green.
+- **A cover letter.** One page, written for this company and role. It gets checked against your résumé, so it won't claim a skill you don't actually have.
+- **Interview prep.** Ten questions you're likely to be asked, each with a sample answer built from your real experience.
 
-1. **Fit analysis** — a computed 0–100 fit score, the requirements you already meet, the gaps to address, and the strengths to lead with for *this* role.
-2. **Résumé rewrite** — your existing bullets re-angled around the job's keywords, shown as a proofreader's diff: the original struck through in red beside the improved version in green, each with a short note on why it's stronger.
-3. **Cover letter** — a grounded one-page letter matched to the company and role. A fact-checker audits it against your résumé, so it never claims a skill you don't have.
-4. **Interview prep** — ten likely questions, each with a strong sample answer drawn from your real experience.
+A few extra tools come with it:
 
-**The extra tools**
+- **ATS scan.** Checks how well your new résumé would get through an automated keyword filter, and tells you which honest keywords to add.
+- **Mock interview.** Answer a question out loud and get it graded, with what was good and what to fix.
+- **Salary coach.** Type in an offer (in ₹) and get two ready-to-send messages for negotiating it.
+- **Downloads.** Save the résumé as a PDF, the cover letter as a Word file, and a one-week follow-up reminder for your calendar.
 
-- **ATS keyword scan** — scores how well your rewritten résumé would survive an automated keyword screen, and tells you which honest keywords to add. It ignores hedged "haven't used X" mentions instead of rewarding them.
-- **Voice mock interview** — practice an answer out loud (speech-to-text in the browser) and get it graded against the ideal answer, with concrete strengths and improvements.
-- **Salary-negotiation coach** — enter an offer and get two ready-to-send negotiation scripts (all amounts in Indian Rupees, ₹).
-- **One-click exports** — download the rewritten résumé as a PDF, the cover letter as a Word `.docx`, and a one-week follow-up reminder as a calendar `.ics` file.
-
-**The workspace**
-
-Everything lives in a split-screen "command center": a roster on the left lists
-your whole pipeline of applications (with a live status pill, search, multi-select
-delete, and an application-status dropdown — Not Applied / Applied / Interviewing /
-Rejected), and the stage on the right shows the selected role's kit behind a tab
-bar. You can regenerate any single artifact without re-running the whole pipeline.
-
----
-
-## How it works
-
-Submitting a role kicks off a background pipeline so the API can respond
-instantly; the frontend polls until the kit is ready. The pipeline is a
-coordinator that fans out to three agents in parallel, with a self-correction loop
-on the cover letter:
-
-```
-START → coordinator → fit_analyst ─┬─ resume_writer ───────────────────────┬─→ END
-                                   ├─ interviewer ──────────────────────────┤
-                                   └─ cover_letter_writer → verify_cover_letter
-                                              ▲                       │
-                                              └──── "retry" ──────────┘  ("proceed") → END
-```
-
-1. **Coordinator** trims and normalizes the résumé and JD text.
-2. **Fit Analyst** compares the two and produces the structured fit analysis.
-3. **Résumé Writer**, **Cover Letter writer**, and **Interviewer** all run off that analysis at the same time.
-4. **The Governor** (`verify_cover_letter`) checks the drafted letter against the résumé. If it finds a claim the résumé doesn't support, it sends the letter back for a corrective rewrite — capped at two drafts, so the loop always terminates. When the job needs a skill the candidate lacks, the writer bridges the gap honestly (emphasizing transferable, first-principles experience) rather than claiming the skill.
-
-If any single agent hits an error (say, a flaky LLM call), it records the error
-and returns nothing instead of bringing down the whole run.
-
----
-
-## Architecture & tech stack
-
-| Layer         | Technology                                                          |
-| ------------- | ------------------------------------------------------------------ |
-| Backend API   | FastAPI, served by Uvicorn                                          |
-| Database      | SQLAlchemy 2 — **SQLite locally (zero setup)**, PostgreSQL in production |
-| Migrations    | Alembic                                                             |
-| Agents        | LangGraph (a coordinator + four agents + the Governor)             |
-| LLM provider  | Groq (`llama-3.3-70b`) or OpenAI (`gpt-4o-mini`)                   |
-| Auth          | JWT access tokens, bcrypt-hashed passwords                          |
-| Résumé parser | `pypdf`                                                             |
-| JD scraping   | `requests` + `beautifulsoup4` (with an SSRF guard)                 |
-| Exports       | `python-docx` (DOCX) and `fpdf2` (PDF)                            |
-| Frontend      | Vanilla HTML + CSS + JavaScript (`fetch`, no build step)           |
+All your applications sit in one list. You can mark where each one stands (Not Applied, Applied, Interviewing, Rejected), search through them, delete several at once, and redo any single piece without rerunning the whole thing.
 
 ---
 
@@ -135,191 +58,76 @@ job_copilot_root/
 
 ---
 
-## Data model
-
-Three tables, owned top to bottom (deleting a user cascades to their roles and
-drafts):
-
-- **User** — an account: email, bcrypt-hashed password, optional name. Authenticates with JWT access tokens.
-- **Role** — one target job: title, company, the full JD text (and the URL it was scraped from, if any), the plain text extracted from the uploaded résumé, and the user-managed application status.
-- **Draft** — the generated kit for a role: `fit_analysis`, `resume_rewrite`, `cover_letter`, and `interview_qa` (stored as JSON), plus a `status` (pending → processing → completed / failed) the frontend polls on.
-
----
-
-## API overview
-
-All endpoints are under `http://127.0.0.1:8000`. Interactive docs are at
-`http://127.0.0.1:8000/docs` once the backend is running.
-
-| Method & path                              | What it does                                        |
-| ------------------------------------------ | --------------------------------------------------- |
-| `POST /auth/register`, `/auth/login`, `GET /auth/me` | Create an account, log in (get a token), read the current user. |
-| `POST /roles`                              | Upload a résumé + JD, create a role, start generation. |
-| `GET /roles`, `GET /roles/{id}`            | List the user's roles / fetch one.                  |
-| `GET /roles/{id}/draft`, `GET /drafts/{id}`| Poll the generated draft.                           |
-| `PATCH /roles/{id}`                        | Update the application status.                       |
-| `DELETE /roles/{id}`, `POST /roles/bulk-delete` | Delete one or several roles.                   |
-| `POST /roles/{id}/regenerate/{artifact}`   | Re-run one agent (`resume` / `cover` / `interview`).|
-| `POST /roles/{id}/ats-score`, `/interview/grade`, `/salary-coach` | The extra analysis tools. |
-| `GET /roles/{id}/export/resume.pdf`, `/cover-letter.docx`, `/calendar` | Download the artifacts. |
-| `GET /health`                              | Liveness probe.                                     |
-
----
-
-## Prerequisites
+## What you need (Prerequisites)
 
 Just two things — **no database to install**:
 
-- **Python 3.10–3.12** (3.13 isn't supported yet because of a dependency).
-- A free **LLM API key** from [Groq](https://console.groq.com/keys).
+- **Python 3.10, 3.11, or 3.12.** Not 3.13 yet, because one of the libraries doesn't support it.
+- **A free Groq API key** from https://console.groq.com/keys. This is what powers the writing.
+
+There's no separate database to set up. The app keeps everything in one local file.
+
+If you'd rather use OpenAI than Groq, you can: set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` in `backend/.env`.
 
 ---
 
-## Run it on macOS
+## How it works
 
-### Step 1 — Install Python
+Submitting a role kicks off a background pipeline so the API can respond
+instantly; the frontend polls until the kit is ready. The pipeline is a
+coordinator that fans out to three agents in parallel, with a self-correction loop
+on the cover letter:
 
-With [Homebrew](https://brew.sh):
-
-```bash
-brew install python@3.11
+```
+START → coordinator → fit_analyst ─┬─ resume_writer ───────────────────────┬─→ END
+                                   ├─ interviewer ──────────────────────────┤
+                                   └─ cover_letter_writer → verify_cover_letter
+                                              ▲                       │
+                                              └──── "retry" ──────────┘  ("proceed") → END
 ```
 
-### Step 2 — Run the one-click launcher
+1. **Coordinator** trims and normalizes the résumé and JD text.
+2. **Fit Analyst** compares the two and produces the structured fit analysis.
+3. **Résumé Writer**, **Cover Letter writer**, and **Interviewer** all run off that analysis at the same time.
+4. **The Governor** (`verify_cover_letter`) checks the drafted letter against the résumé. If it finds a claim the résumé doesn't support, it sends the letter back for a corrective rewrite — capped at two drafts, so the loop always terminates. When the job needs a skill the candidate lacks, the writer bridges the gap honestly (emphasizing transferable, first-principles experience) rather than claiming the skill.
 
-From the project root:
-
-```bash
-chmod +x run.sh   # first time only
-./run.sh
-```
-
-That's it. The launcher creates the virtualenv, installs the dependencies, creates
-`backend/.env` (with a generated JWT secret), creates the local **SQLite** database
-by running the migrations, starts both servers, and opens
-**http://127.0.0.1:5500** in your browser. Press **Ctrl-C** to stop.
-
-There's no database server to install or configure — the app keeps its data in a
-single file at `backend/job_copilot.db`.
-
-### Step 3 — Add your Groq key (for AI generation)
-
-The launcher sets everything up, but it can't know your API key. To generate kits,
-open `backend/.env`, set:
-
-```ini
-GROQ_API_KEY=gsk_your_key_here
-```
-
-then re-run `./run.sh`. (Without a key you can still sign up and explore the app;
-generation just reports a friendly failure.)
-
-> **Prefer to do it by hand?** See [Manual setup](#manual-setup) below.
+If any single agent hits an error (say, a flaky LLM call), it records the error
+and returns nothing instead of bringing down the whole run.
 
 ---
 
 ## Run it on Windows
 
-### Step 1 — Install Python
+1. Install Python from https://www.python.org/downloads/. On the first screen of the installer, check the box that says "Add python.exe to PATH."
+2. Open the project folder in PowerShell and run:
+   ```powershell
+   .\run.ps1
+   ```
+3. The first run does the whole setup on its own: it builds the environment, installs the libraries, creates the local database, starts the app, and opens it in your browser at http://127.0.0.1:5500.
 
-Download **Python 3.11** (or 3.10 / 3.12) from
-[python.org/downloads](https://www.python.org/downloads/). In the installer, tick
-**“Add python.exe to PATH”** on the first screen, then install.
+To turn on the AI writing, open `backend\.env`, paste your key after `GROQ_API_KEY=`, and run `.\run.ps1` again. Without a key you can still sign up and click around; only the writing won't work.
 
-### Step 2 — Run the one-click launcher
-
-From the project root, in PowerShell:
-
-```powershell
-.\run.ps1
-```
-
-That's it. The launcher creates the virtualenv, installs the dependencies, creates
-`backend\.env` (with a generated JWT secret), creates the local **SQLite** database
-by running the migrations, starts both servers, and opens
-**http://127.0.0.1:5500** in your browser.
-
-There's no database server to install or configure — the app keeps its data in a
-single file at `backend\job_copilot.db`.
-
-> If PowerShell blocks the script, allow local scripts for your user once:
-> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then re-run `.\run.ps1`.
-
-### Step 3 — Add your Groq key (for AI generation)
-
-Open `backend\.env`, set `GROQ_API_KEY=gsk_your_key_here`, and re-run `.\run.ps1`.
-(Without a key you can still sign up and explore; generation just reports a
-friendly failure.)
-
-> **Prefer to do it by hand?** See [Manual setup](#manual-setup) below.
-
----
-
-## Manual setup
-
-If you'd rather run each step yourself instead of using the launcher:
-
-**macOS / Linux**
-
-```bash
-cd backend
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-
-cp .env.example .env
-#   In backend/.env set JWT_SECRET_KEY and GROQ_API_KEY. Leave DATABASE_URL unset
-#   to use SQLite locally. Generate a secret with:
-#     python3 -c "import secrets; print(secrets.token_urlsafe(64))"
-
-alembic upgrade head                       # creates backend/job_copilot.db
-
-uvicorn app.main:app --reload              # terminal 1
-cd ../frontend && python3 -m http.server 5500   # terminal 2
-```
-
-**Windows (PowerShell)**
+If PowerShell refuses to run the script, run this once and try again:
 
 ```powershell
-cd backend
-py -3.11 -m venv .venv          # swap -3.11 for the version you installed
-.\.venv\Scripts\Activate.ps1
-pip install --upgrade pip
-pip install -r requirements.txt
-
-Copy-Item .env.example .env
-#   In backend\.env set JWT_SECRET_KEY and GROQ_API_KEY. Leave DATABASE_URL unset
-#   to use SQLite locally. Generate a secret with:
-#     python -c "import secrets; print(secrets.token_urlsafe(64))"
-
-alembic upgrade head                       # creates backend\job_copilot.db
-
-uvicorn app.main:app --reload              # terminal 1
-cd ..\frontend ; python -m http.server 5500     # terminal 2
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
-
-Open **http://127.0.0.1:5500**.
-
 ---
 
-## Configuration
+## Run it on Mac
 
-All settings live in `backend/.env`. The only ones you need locally are
-`JWT_SECRET_KEY` and an LLM key — the database needs no configuration. See
-`.env.example` for the full list.
+1. Install Python with Homebrew:
+   ```bash
+   brew install python@3.11
+   ```
+2. From the project folder, run:
+   ```bash
+   chmod +x run.sh
+   ./run.sh
+   ```
+3. It does the same setup and opens the app at http://127.0.0.1:5500.
 
-| Variable               | Example                                          | What it's for                                                |
-| ---------------------- | ------------------------------------------------ | ------------------------------------------------------------ |
-| `JWT_SECRET_KEY`       | *(a long random string)*                         | Signs login tokens.                                          |
-| `GROQ_API_KEY`         | `gsk_...`                                         | Required when `LLM_PROVIDER=groq`.                          |
-| `LLM_PROVIDER`         | `groq`                                            | Which provider the agents use: `groq` or `openai`.          |
-| `OPENAI_API_KEY`       | `sk-...`                                           | Required when `LLM_PROVIDER=openai`.                       |
-| `DATABASE_URL`         | *(unset locally)*                                | Leave unset to use SQLite. Set to a PostgreSQL URL in production. |
-| `BACKEND_CORS_ORIGINS` | `http://localhost:5500,http://127.0.0.1:5500`    | Frontend origins allowed to call the API.                   |
-
-> Generation needs a working LLM key. Without one, the agents fail gracefully and
-> the draft is marked **failed** rather than crashing the server.
+Add your Groq key to `backend/.env` the same way, then run `./run.sh` again.
 
 ---
 
@@ -360,13 +168,8 @@ marked `sync: false`, so they never live in the repo.
 
 ---
 
-## Design notes
+## Stopping and starting again
 
-- **Zero-setup local, Postgres in production.** Local development uses a SQLite file so there's nothing to install; production sets `DATABASE_URL` to PostgreSQL. The same code drives both.
-- **Grounded, or it doesn't ship.** The cover-letter Governor fact-checks every draft against the résumé and rewrites anything it can't support. When the JD needs a skill the candidate lacks, the writer bridges the gap honestly instead of claiming it. The ATS scan is just as strict — it ignores hedged "haven't used X" mentions rather than rewarding them.
-- **Rupees throughout.** All money in the app — the salary coach, its prompts, and the UI — is in Indian Rupees (₹).
-- **No build step on the frontend.** It's plain HTML, CSS, and JavaScript served as static files, so there's nothing to compile and the API client is a single `window.API` object.
-```
-=======
-# CopilotProject
->>>>>>> 74c1f4ac0328df4136e178999f16bd66670a056e
+Press Ctrl-C in the terminal to stop the app. Your account and applications are saved in `backend/job_copilot.db`, so they'll be waiting for you when you run it again.
+
+
